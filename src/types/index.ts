@@ -6,6 +6,7 @@ export interface Member {
   member_class: string;
   gender: string;
   birthday: string;
+  birth_month_day: string;
   phone: string;
   email: string;
   address: string;
@@ -19,9 +20,12 @@ export interface Member {
   school: string;
   grade: string;
   major: string;
+  company: string;
   graduation_year: string;
   family_tag: string;
   family_role: string;
+  group_name: string;
+  group_role: string;
   last_contact: string;
   memo: string;
   welcome_table: string;
@@ -91,13 +95,22 @@ export interface AppUser {
   email: string;
   name: string;
   role: string;
+  group_type: string;
+  group_name: string;
 }
+
+export type ActivityType = "심방" | "봉사" | "교육" | "세례·임직" | "행사" | "기타";
+
+export const ACTIVITY_TYPES: ActivityType[] = [
+  "심방", "봉사", "교육", "세례·임직", "행사", "기타"
+];
 
 export const MEMBER_HEADERS = [
   "name", "name_en", "status", "membership_stage", "member_class", "gender",
-  "birthday", "phone", "email", "address", "department", "district", "role",
-  "baptism", "ministry", "registered_date", "previous_church", "school",
-  "grade", "major", "graduation_year", "family_tag", "family_role",
+  "birthday", "birth_month_day", "phone", "email", "address",
+  "department", "district", "role", "baptism", "ministry",
+  "registered_date", "previous_church", "school", "grade", "major", "company",
+  "graduation_year", "family_tag", "family_role", "group_name", "group_role",
   "last_contact", "memo", "welcome_table", "gospel_start", "fellow_table",
   "gospel_into_leadership", "photo_url", "created_at"
 ] as const;
@@ -118,3 +131,26 @@ export const DEPARTMENT_DISTRICTS: Record<string, string[]> = {
 export const VISITATION_TYPES = [
   "정기심방", "위기심방", "새가족", "경조사", "진로상담", "병원심방", "기타"
 ];
+
+export const TRAINING_COURSES = [
+  "웰컴테이블", "가스펠스타트", "펠로우테이블", "GIL",
+  "바이블아카데미", "퍼듀생애주기제자훈련", "제직세미나", "기타"
+];
+
+export const SACRAMENT_TYPES = [
+  "세례", "유아세례", "입교", "장로임직", "집사임직", "권사임직", "기타"
+];
+
+export const MINISTRY_DEPARTMENTS = [
+  "예배부", "교육부", "선교부", "교제부", "관리부",
+  "찬양팀", "안내팀", "미디어팀", "주차팀", "식당팀",
+  "작은불꽃", "실로암", "코너스톤",
+  "영아부", "유아부", "유초등부", "중고등부", "기타"
+];
+
+export const DEPT_COLORS: Record<string, string> = {
+  "장년부": "#93C5FD",
+  "청년부": "#86EFAC",
+  "주일학교": "#FDBA74",
+  "알럼나이": "#C4B5FD",
+};

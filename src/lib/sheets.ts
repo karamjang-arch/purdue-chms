@@ -70,6 +70,17 @@ export async function updateRow(
   });
 }
 
+export function indexToColumnLetter(index: number): string {
+  let result = "";
+  let i = index;
+  while (true) {
+    result = String.fromCharCode(65 + (i % 26)) + result;
+    i = Math.floor(i / 26) - 1;
+    if (i < 0) break;
+  }
+  return result;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function rowsToObjects<T = Record<string, any>>(
   rows: string[][],

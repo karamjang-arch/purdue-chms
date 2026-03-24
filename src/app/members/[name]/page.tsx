@@ -6,6 +6,7 @@ import { Member, Visitation, TrainingRecord, MinistryRoster, Sacrament, MEMBER_H
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 
 const STAGES = ["Visitor", "Member", "Fellow", "Leader"];
 const STAGE_FIELDS: Record<string, string> = {
@@ -14,6 +15,22 @@ const STAGE_FIELDS: Record<string, string> = {
   Fellow: "fellow_table",
   Leader: "gospel_into_leadership",
 };
+
+const ACTIVITY_BADGE: Record<string, string> = {
+  "심방": "bg-blue-100 text-blue-700",
+  "교육": "bg-green-100 text-green-700",
+  "봉사": "bg-orange-100 text-orange-700",
+  "세례·임직": "bg-purple-100 text-purple-700",
+  "행사": "bg-yellow-100 text-yellow-700",
+};
+
+interface TimelineItem {
+  date: string;
+  type: string;
+  title: string;
+  detail: string;
+  sub?: string;
+}
 
 function MemberDetailContent() {
   const { isAuthed, role, isDemo } = useAuthOrDemo();
@@ -56,6 +73,40 @@ function MemberDetailContent() {
     [sacraments, name]
   );
 
+  // Baptism date from sacraments
+  const baptismDate = useMemo(() => {
+    const rec = memberSacraments.find((s) =>
+      s.type === "세례" || s.type === "유아세례" || s.type === "입교"
+    );
+    return rec?.date || "";
+  }, [memberSacraments]);
+
+  // Unified timeline
+  const [timelineFilter, setTimelineFilter] = useState("전체");
+  const timeline = useMemo(() => {
+    const items: TimelineItem[] = [];
+    memberVisitations.forEach((v) => items.push({
+      date: v.date, type: "심방", title: v.visitation_type, detail: v.summary,
+      sub: v.prayer_requests ? `기도제목: ${v.prayer_requests}` : undefined,
+    }));
+    memberTraining.forEach((t) => items.push({
+      date: t.completed_date, type: "교육", title: t.course, detail: t.notes,
+    }));
+    memberMinistry.forEach((m) => items.push({
+      date: m.start_date, type: "봉사", title: m.department_ministry,
+      detail: `${m.role_in_team} · ${m.period}`,
+    }));
+    memberSacraments.forEach((s) => items.push({
+      date: s.date, type: "세례·임직", title: s.type, detail: s.detail,
+    }));
+    return items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }, [memberVisitations, memberTraining, memberMinistry, memberSacraments]);
+
+  const filteredTimeline = useMemo(() => {
+    if (timelineFilter === "전체") return timeline;
+    return timeline.filter((t) => t.type === timelineFilter);
+  }, [timeline, timelineFilter]);
+
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -86,16 +137,71 @@ function MemberDetailContent() {
     }
   };
 
+  // Photo upload
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || isDemo) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("member_name", name);
+    try {
+      const res = await fetch("/api/members/photo", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        setForm((f) => ({ ...f, photo_url: data.url }));
+        router.refresh();
+      }
+    } catch { /* silently fail */ }
+  };
+
   if (!member) {
     return <div className="flex items-center justify-center h-64"><p className="text-navy-400">로딩 중...</p></div>;
   }
 
   const currentStageIndex = STAGES.indexOf(member.membership_stage);
 
+  const infoFields = [
+    { label: "상태", key: "status" },
+    { label: "성별", key: "gender" },
+    { label: "생년월일", key: "birthday" },
+    { label: "생일(월일)", key: "birth_month_day" },
+    { label: "연락처", key: "phone" },
+    { label: "이메일", key: "email" },
+    { label: "주소", key: "address" },
+    { label: "부서", key: "department" },
+    { label: "구역", key: "district" },
+    { label: "직분", key: "role" },
+    { label: "세례", key: "baptism", suffix: baptismDate ? ` (${baptismDate})` : "" },
+    { label: "봉사", key: "ministry" },
+    { label: "소그룹", key: "group_name" },
+    { label: "소그룹역할", key: "group_role" },
+    { label: "등록일", key: "registered_date" },
+    { label: "이전교회", key: "previous_church" },
+    { label: "학교", key: "school" },
+    { label: "학위", key: "grade" },
+    { label: "전공", key: "major" },
+    { label: "직장", key: "company" },
+    { label: "졸업연도", key: "graduation_year" },
+    { label: "가족태그", key: "family_tag" },
+    { label: "가족역할", key: "family_role" },
+    { label: "최근연락", key: "last_contact" },
+    { label: "메모", key: "memo" },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      {/* Header with avatar */}
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <Avatar name={member.name} photoUrl={member.photo_url} size="lg" />
+          {editing && (
+            <label className="absolute bottom-0 right-0 bg-navy-800 text-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer text-xs hover:bg-navy-700">
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              +
+            </label>
+          )}
+        </div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-navy-800">{member.name}</h1>
           <p className="text-navy-500 text-sm">{member.name_en}</p>
         </div>
@@ -112,29 +218,7 @@ function MemberDetailContent() {
       <div className="bg-white rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold text-navy-700 mb-3">인적사항 / 교회 정보</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {[
-            { label: "상태", key: "status" },
-            { label: "성별", key: "gender" },
-            { label: "생년월일", key: "birthday" },
-            { label: "연락처", key: "phone" },
-            { label: "이메일", key: "email" },
-            { label: "주소", key: "address" },
-            { label: "부서", key: "department" },
-            { label: "구역", key: "district" },
-            { label: "직분", key: "role" },
-            { label: "세례", key: "baptism" },
-            { label: "봉사", key: "ministry" },
-            { label: "등록일", key: "registered_date" },
-            { label: "이전교회", key: "previous_church" },
-            { label: "학교", key: "school" },
-            { label: "학위", key: "grade" },
-            { label: "전공", key: "major" },
-            { label: "졸업연도", key: "graduation_year" },
-            { label: "가족태그", key: "family_tag" },
-            { label: "가족역할", key: "family_role" },
-            { label: "최근연락", key: "last_contact" },
-            { label: "메모", key: "memo" },
-          ].map((field) => (
+          {infoFields.map((field) => (
             <div key={field.key} className="flex">
               <span className="w-24 shrink-0 text-gray-500">{field.label}</span>
               {editing ? (
@@ -144,7 +228,10 @@ function MemberDetailContent() {
                   className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"
                 />
               ) : (
-                <span className="text-navy-800">{(member as unknown as Record<string, string>)[field.key] || "-"}</span>
+                <span className="text-navy-800">
+                  {(member as unknown as Record<string, string>)[field.key] || "-"}
+                  {"suffix" in field && field.suffix ? field.suffix : ""}
+                </span>
               )}
             </div>
           ))}
@@ -190,87 +277,59 @@ function MemberDetailContent() {
               <Link
                 key={fm.name}
                 href={`/members/${encodeURIComponent(fm.name)}${demoSuffix}`}
-                className="border border-gray-100 rounded-lg p-3 hover:bg-navy-50 transition-colors"
+                className="border border-gray-100 rounded-lg p-3 hover:bg-navy-50 transition-colors flex items-center gap-2"
               >
-                <p className="font-medium text-navy-700">{fm.name}</p>
-                <p className="text-xs text-gray-500">{fm.family_role} · {fm.department}</p>
+                <Avatar name={fm.name} photoUrl={fm.photo_url} size="sm" />
+                <div>
+                  <p className="font-medium text-navy-700 text-sm">{fm.name}</p>
+                  <p className="text-xs text-gray-500">{fm.family_role} · {fm.department}</p>
+                </div>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Section 4: Visitation History */}
+      {/* Section 4: Unified Activity Timeline */}
       <div className="bg-white rounded-xl p-4 shadow-sm">
-        <h2 className="font-semibold text-navy-700 mb-3">심방 기록</h2>
-        {memberVisitations.length === 0 ? (
-          <p className="text-sm text-gray-400">심방 기록이 없습니다.</p>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-navy-700">활동 기록</h2>
+          <Link href={`/activities/new${demoSuffix}`} className="text-xs text-navy-500 hover:underline">+ 새 기록</Link>
+        </div>
+        {/* Filter tabs */}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {["전체", "심방", "봉사", "교육", "세례·임직", "행사"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setTimelineFilter(tab)}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                timelineFilter === tab ? "bg-navy-800 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        {filteredTimeline.length === 0 ? (
+          <p className="text-sm text-gray-400">활동 기록이 없습니다.</p>
         ) : (
           <div className="space-y-3">
-            {memberVisitations.map((v) => (
-              <div key={v.id} className="border-l-2 border-navy-200 pl-3">
+            {filteredTimeline.map((item, i) => (
+              <div key={i} className="border-l-2 border-navy-200 pl-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-navy-700">{v.date}</span>
-                  <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{v.visitation_type}</span>
+                  <span className="font-medium text-navy-700">{item.date}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${ACTIVITY_BADGE[item.type] || "bg-gray-100 text-gray-600"}`}>
+                    {item.type}
+                  </span>
+                  <span className="text-gray-500">{item.title}</span>
                 </div>
-                <p className="text-sm text-gray-700 mt-1">{v.summary}</p>
-                {v.prayer_requests && <p className="text-xs text-gray-500 mt-1">기도제목: {v.prayer_requests}</p>}
-                {v.follow_up && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    후속: {v.follow_up} {v.follow_up_date && `(${v.follow_up_date})`}
-                    {v.follow_up_done === "완료" && <span className="text-green-600 ml-1">완료</span>}
-                  </p>
-                )}
+                {item.detail && <p className="text-sm text-gray-700 mt-1">{item.detail}</p>}
+                {item.sub && <p className="text-xs text-gray-500 mt-1">{item.sub}</p>}
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Section 5: Training */}
-      {memberTraining.length > 0 && (
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold text-navy-700 mb-3">양육과정 이력</h2>
-          <div className="space-y-2">
-            {memberTraining.map((t) => (
-              <div key={t.id} className="flex justify-between text-sm">
-                <span className="text-navy-700">{t.course}</span>
-                <span className="text-gray-500">{t.completed_date}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 6: Ministry */}
-      {memberMinistry.length > 0 && (
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold text-navy-700 mb-3">봉사 기록</h2>
-          <div className="space-y-2">
-            {memberMinistry.map((m) => (
-              <div key={m.id} className="text-sm">
-                <span className="font-medium text-navy-700">{m.department_ministry}</span>
-                <span className="text-gray-500 ml-2">{m.role_in_team} · {m.period}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 7: Sacraments */}
-      {memberSacraments.length > 0 && (
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold text-navy-700 mb-3">세례/임직 이력</h2>
-          <div className="space-y-2">
-            {memberSacraments.map((s) => (
-              <div key={s.id} className="flex justify-between text-sm">
-                <span className="text-navy-700">{s.type} — {s.detail}</span>
-                <span className="text-gray-500">{s.date}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

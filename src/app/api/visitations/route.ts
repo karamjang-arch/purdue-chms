@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { readSheet, appendRow, updateCell, rowsToObjects } from "@/lib/sheets";
-import { Visitation, VISITATION_HEADERS } from "@/types";
+import { readSheet, appendRow, updateCell, rowsToObjects, indexToColumnLetter } from "@/lib/sheets";
+import { Visitation, VISITATION_HEADERS, MEMBER_HEADERS } from "@/types";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -50,8 +50,7 @@ export async function POST(req: NextRequest) {
       (row, i) => i > 0 && row[0] === body.member_name
     );
     if (memberIndex !== -1) {
-      // last_contact is column X (24th column, index 23)
-      const colLetter = "X";
+      const colLetter = indexToColumnLetter(MEMBER_HEADERS.indexOf("last_contact"));
       await updateCell(
         session.accessToken,
         "members",

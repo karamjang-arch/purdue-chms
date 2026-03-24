@@ -2,14 +2,17 @@
 
 import { useAuthOrDemo } from "@/lib/hooks";
 import { DEPARTMENT_DISTRICTS } from "@/types";
+import { PURDUE_MAJORS } from "@/lib/purdue-majors";
+import Combobox from "@/components/Combobox";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 
-const INITIAL_FORM = {
-  name: "", name_en: "", gender: "", birthday: "", phone: "", email: "",
-  address: "", department: "", district: "", baptism: "", previous_church: "",
-  school: "", grade: "", major: "", graduation_year: "",
-  family_tag: "", family_role: "",
+const INITIAL_FORM: Record<string, string> = {
+  name: "", name_en: "", gender: "", birthday: "", birth_month_day: "",
+  phone: "", email: "", address: "", department: "", district: "",
+  baptism: "", previous_church: "", school: "", grade: "", major: "",
+  company: "", graduation_year: "", family_tag: "", family_role: "",
+  group_name: "", group_role: "",
 };
 
 function NewMemberContent() {
@@ -25,13 +28,22 @@ function NewMemberContent() {
 
   const [form, setForm] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
+  const [birthPrivate, setBirthPrivate] = useState(false);
 
   const districtOptions = form.department ? (DEPARTMENT_DISTRICTS[form.department] || []) : [];
+
+  // Group name options based on department/district
+  const groupOptions = (() => {
+    if (form.district === "작은불꽃") return ["1조", "2조", "3조", "4조", "5조", "6조", "7조"];
+    if (form.department === "주일학교") return ["1반", "2반", "3반"];
+    return [];
+  })();
 
   const handleChange = (key: string, value: string) => {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "department") next.district = "";
+      if (key === "department") { next.district = ""; next.group_name = ""; }
+      if (key === "district") { next.group_name = ""; }
       return next;
     });
   };
@@ -39,6 +51,19 @@ function NewMemberContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) { alert("이름을 입력해주세요."); return; }
+
+    // Handle birth privacy
+    const submitData = { ...form };
+    if (birthPrivate) {
+      submitData.birthday = "";
+      // birth_month_day already set by user
+    } else if (form.birthday && !form.birth_month_day) {
+      // Auto-derive birth_month_day from birthday
+      const parts = form.birthday.split("-");
+      if (parts.length === 3) {
+        submitData.birth_month_day = `${parts[1]}-${parts[2]}`;
+      }
+    }
 
     if (isDemo) {
       alert("데모 모드에서는 저장되지 않습니다.");
@@ -51,7 +76,7 @@ function NewMemberContent() {
       const res = await fetch("/api/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(submitData),
       });
       if (!res.ok) throw new Error("Failed");
       router.push("/members" + demoSuffix);
@@ -78,7 +103,36 @@ function NewMemberContent() {
               <option value="여">여</option>
             </select>
           </div>
-          <Field label="생년월일" value={form.birthday} onChange={(v) => handleChange("birthday", v)} type="date" />
+
+          {/* Birthday with privacy option */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">
+                {birthPrivate ? "생일 (월-일)" : "생년월일"}
+              </label>
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                <input type="checkbox" checked={birthPrivate} onChange={(e) => setBirthPrivate(e.target.checked)} className="rounded" />
+                생년 비공개
+              </label>
+            </div>
+            {birthPrivate ? (
+              <input
+                type="text"
+                placeholder="MM-DD"
+                value={form.birth_month_day}
+                onChange={(e) => handleChange("birth_month_day", e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-300"
+              />
+            ) : (
+              <input
+                type="date"
+                value={form.birthday}
+                onChange={(e) => handleChange("birthday", e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              />
+            )}
+          </div>
+
           <Field label="연락처" value={form.phone} onChange={(v) => handleChange("phone", v)} type="tel" />
           <Field label="이메일" value={form.email} onChange={(v) => handleChange("email", v)} type="email" />
           <div className="sm:col-span-2">
@@ -98,6 +152,27 @@ function NewMemberContent() {
               {districtOptions.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
+
+          {/* Group */}
+          {groupOptions.length > 0 ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">소그룹</label>
+              <select value={form.group_name} onChange={(e) => handleChange("group_name", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                <option value="">선택</option>
+                {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+          ) : (
+            <Field label="소그룹" value={form.group_name} onChange={(v) => handleChange("group_name", v)} />
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">소그룹 역할</label>
+            <select value={form.group_role} onChange={(e) => handleChange("group_role", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              <option value="">선택</option>
+              {["조장", "부조장", "조원", "구역장", "부구역장", "반교사"].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">세례</label>
             <select value={form.baptism} onChange={(e) => handleChange("baptism", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
@@ -116,7 +191,8 @@ function NewMemberContent() {
               {["학부", "석사", "박사", "포닥", "교직원", "기타"].map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
-          <Field label="전공" value={form.major} onChange={(v) => handleChange("major", v)} />
+          <Combobox label="전공" value={form.major} onChange={(v) => handleChange("major", v)} options={PURDUE_MAJORS} />
+          <Field label="직장" value={form.company} onChange={(v) => handleChange("company", v)} />
           <Field label="졸업연도" value={form.graduation_year} onChange={(v) => handleChange("graduation_year", v)} />
           <Field label="가족태그" value={form.family_tag} onChange={(v) => handleChange("family_tag", v)} />
           <div>
@@ -129,18 +205,12 @@ function NewMemberContent() {
         </div>
 
         <div className="pt-4 flex gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex-1 bg-navy-800 text-white py-3 rounded-lg font-medium hover:bg-navy-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving}
+            className="flex-1 bg-navy-800 text-white py-3 rounded-lg font-medium hover:bg-navy-700 disabled:opacity-50">
             {saving ? "등록 중..." : "등록"}
           </button>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-6 py-3 rounded-lg font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
-          >
+          <button type="button" onClick={() => router.back()}
+            className="px-6 py-3 rounded-lg font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
             취소
           </button>
         </div>
@@ -155,12 +225,8 @@ function Field({ label, value, onChange, type = "text" }: {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-300"
-      />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-300" />
     </div>
   );
 }

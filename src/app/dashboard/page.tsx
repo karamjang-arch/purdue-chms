@@ -2,7 +2,7 @@
 
 import { useAuthOrDemo, useFetch } from "@/lib/hooks";
 import { DEMO_MEMBERS, DEMO_VISITATIONS } from "@/lib/demo-data";
-import { Member, Visitation } from "@/types";
+import { Member, Visitation, DEPT_COLORS } from "@/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 
-const COLORS = ["#243b53", "#334e68", "#486581", "#627d98", "#829ab1", "#9fb3c8", "#bcccdc"];
+const FALLBACK_COLOR = "#D1D5DB";
 
 function DashboardContent() {
   const { isAuthed, role, isDemo } = useAuthOrDemo();
@@ -54,21 +54,29 @@ function DashboardContent() {
       .sort((a, b) => a[0].localeCompare(b[0], "ko"))
       .map(([name, value]) => ({ name, value }));
 
-    // Birthday this month
+    // Birthday this month — check both birthday and birth_month_day
     const now = new Date();
     const thisMonth = String(now.getMonth() + 1).padStart(2, "0");
     const birthdays = members.filter((m) => {
-      if (!m.birthday) return false;
-      const parts = m.birthday.split("-");
-      return parts[1] === thisMonth && m.status === "활동";
+      if (m.status !== "활동") return false;
+      if (m.birthday) {
+        const parts = m.birthday.split("-");
+        if (parts[1] === thisMonth) return true;
+      }
+      if (m.birth_month_day) {
+        const parts = m.birth_month_day.split("-");
+        if (parts[0] === thisMonth) return true;
+      }
+      return false;
     });
 
     // Last 90 days no contact
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
     const noContact = members.filter((m) => {
-      if (m.status !== "활동" || !m.last_contact) return true;
-      return new Date(m.last_contact) < ninetyDaysAgo && m.status === "활동";
+      if (m.status !== "활동") return false;
+      if (!m.last_contact) return true;
+      return new Date(m.last_contact) < ninetyDaysAgo;
     });
 
     return {
@@ -96,11 +104,7 @@ function DashboardContent() {
   }, [visitations]);
 
   if (ml || vl || !stats) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-navy-400">로딩 중...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><p className="text-navy-400">로딩 중...</p></div>;
   }
 
   if (role !== "admin" && !isDemo) {
@@ -149,8 +153,8 @@ function DashboardContent() {
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie data={stats.deptPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                {stats.deptPie.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                {stats.deptPie.map((entry, i) => (
+                  <Cell key={i} fill={DEPT_COLORS[entry.name] || FALLBACK_COLOR} />
                 ))}
               </Pie>
               <Tooltip />
@@ -167,7 +171,7 @@ function DashboardContent() {
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#334e68" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="#93C5FD" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -176,7 +180,6 @@ function DashboardContent() {
 
       {/* Lists */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Birthdays */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-semibold text-navy-700 mb-3">이번 달 생일</h2>
           {stats.birthdays.length === 0 ? (
@@ -188,18 +191,17 @@ function DashboardContent() {
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="text-navy-700 hover:underline">
                     {m.name}
                   </Link>
-                  <span className="text-gray-500">{m.birthday}</span>
+                  <span className="text-gray-500">{m.birthday || m.birth_month_day}</span>
                 </li>
               ))}
             </ul>
           )}
         </div>
 
-        {/* Recent visitations */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold text-navy-700 mb-3">최근 심방</h2>
+          <h2 className="font-semibold text-navy-700 mb-3">최근 활동</h2>
           {recentVisitations.length === 0 ? (
-            <p className="text-sm text-gray-400">심방 기록이 없습니다.</p>
+            <p className="text-sm text-gray-400">활동 기록이 없습니다.</p>
           ) : (
             <ul className="space-y-2">
               {recentVisitations.map((v) => (
@@ -215,7 +217,6 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* Follow-up due */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-semibold text-navy-700 mb-3">이번 주 후속 심방 필요</h2>
           {followUpDue.length === 0 ? (
@@ -235,7 +236,6 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* No contact 90 days */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h2 className="font-semibold text-navy-700 mb-3">최근 3개월 미연락 성도</h2>
           {stats.noContact.length === 0 ? (

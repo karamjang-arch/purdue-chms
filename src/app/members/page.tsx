@@ -6,6 +6,7 @@ import { Member, DEPARTMENT_DISTRICTS } from "@/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 
 function MembersContent() {
   const { isAuthed, role, isDemo } = useAuthOrDemo();
@@ -39,7 +40,8 @@ function MembersContent() {
         (m) =>
           m.name.toLowerCase().includes(q) ||
           m.name_en.toLowerCase().includes(q) ||
-          m.major.toLowerCase().includes(q)
+          m.major.toLowerCase().includes(q) ||
+          (m.company && m.company.toLowerCase().includes(q))
       );
     }
     if (filterDept) list = list.filter((m) => m.department === filterDept);
@@ -119,7 +121,7 @@ function MembersContent() {
               <th className="text-left px-4 py-3 font-semibold">이름</th>
               <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">부서</th>
               <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">구역</th>
-              <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">직분</th>
+              <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">소그룹</th>
               <th className="text-left px-4 py-3 font-semibold">멤버십</th>
               <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">연락처</th>
             </tr>
@@ -128,14 +130,17 @@ function MembersContent() {
             {filtered.map((m) => (
               <tr key={m.name + m.email} className="hover:bg-navy-50/50 transition-colors">
                 <td className="px-4 py-3">
-                  <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="text-navy-700 hover:underline font-medium">
-                    {m.name}
+                  <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="flex items-center gap-2 text-navy-700 hover:underline font-medium">
+                    <Avatar name={m.name} photoUrl={m.photo_url} size="sm" />
+                    <span>
+                      {m.name}
+                      <span className="text-gray-400 text-xs ml-1 hidden sm:inline">{m.name_en}</span>
+                    </span>
                   </Link>
-                  <span className="text-gray-400 text-xs ml-1 hidden sm:inline">{m.name_en}</span>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.department}</td>
                 <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.district}</td>
-                <td className="px-4 py-3 hidden lg:table-cell text-gray-600">{m.role}</td>
+                <td className="px-4 py-3 hidden lg:table-cell text-gray-600">{m.group_name}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
                     m.membership_stage === "Leader" ? "bg-purple-100 text-purple-700" :
