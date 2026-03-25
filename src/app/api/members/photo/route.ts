@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing file or member_name" }, { status: 400 });
     }
 
+    // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "파일이 너무 큽니다 (최대 5MB)" }, { status: 400 });
+    }
+
     // Upload to Google Drive
     const auth = new google.auth.OAuth2();
     auth.setCredentials({ access_token: session.accessToken });

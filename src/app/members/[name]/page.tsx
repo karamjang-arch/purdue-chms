@@ -7,6 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import PhotoCropper from "@/components/PhotoCropper";
 
 const STAGES = ["Visitor", "Member", "Fellow", "Leader"];
 const STAGE_FIELDS: Record<string, string> = {
@@ -137,16 +138,25 @@ function MemberDetailContent() {
     }
   };
 
-  // Photo upload
+  // Photo upload with crop
   const [uploadedPhoto, setUploadedPhoto] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string>("");
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || isDemo) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleCropDone = async (blob: Blob) => {
+    setCropSrc("");
     setUploading(true);
     const fd = new FormData();
-    fd.append("file", file);
+    fd.append("file", new File([blob], `${name}.jpg`, { type: "image/jpeg" }));
     fd.append("member_name", name);
     try {
       const res = await fetch("/api/members/photo", { method: "POST", body: fd });
@@ -199,6 +209,14 @@ function MemberDetailContent() {
   ];
 
   return (
+    <>
+    {cropSrc && (
+      <PhotoCropper
+        imageSrc={cropSrc}
+        onCropDone={handleCropDone}
+        onCancel={() => setCropSrc("")}
+      />
+    )}
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       {/* Header with avatar */}
       <div className="flex items-center gap-4">
@@ -211,7 +229,7 @@ function MemberDetailContent() {
           )}
           {editing && !uploading && (
             <label className="absolute bottom-0 right-0 bg-navy-800 text-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer text-xs hover:bg-navy-700">
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
               +
             </label>
           )}
@@ -346,6 +364,7 @@ function MemberDetailContent() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
