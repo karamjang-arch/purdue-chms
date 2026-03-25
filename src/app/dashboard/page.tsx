@@ -74,19 +74,16 @@ function DashboardContent() {
       return false;
     });
 
-    // Last 90 days no contact
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const noContact = members.filter((m) => {
-      if (m.status !== "활동") return false;
-      if (!m.last_contact) return true;
-      return new Date(m.last_contact) < ninetyDaysAgo;
-    });
+    // Recent registrations (newest first, top 10)
+    const recentRegistered = [...members]
+      .filter((m) => m.registered_date)
+      .sort((a, b) => b.registered_date.localeCompare(a.registered_date))
+      .slice(0, 10);
 
     return {
       active, total, needCheck, alumni,
       visitor, member, fellow, leader,
-      deptPie, distBar, birthdays, noContact,
+      deptPie, distBar, birthdays, recentRegistered,
     };
   }, [members]);
 
@@ -276,17 +273,17 @@ function DashboardContent() {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold text-navy-700 mb-3">최근 3개월 미연락 성도</h2>
-          {stats.noContact.length === 0 ? (
-            <p className="text-sm text-gray-400">모든 활동 성도와 연락이 되었습니다.</p>
+          <h2 className="font-semibold text-navy-700 mb-3">최근 등록자</h2>
+          {stats.recentRegistered.length === 0 ? (
+            <p className="text-sm text-gray-400">등록 기록이 없습니다.</p>
           ) : (
             <ul className="space-y-2">
-              {stats.noContact.map((m) => (
+              {stats.recentRegistered.map((m) => (
                 <li key={m.name} className="flex justify-between text-sm">
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="text-navy-700 hover:underline">
                     {m.name}
                   </Link>
-                  <span className="text-gray-400">{m.last_contact || "기록 없음"}</span>
+                  <span className="text-gray-400">{m.registered_date} · {m.department}</span>
                 </li>
               ))}
             </ul>
