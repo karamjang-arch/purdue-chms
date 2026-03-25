@@ -33,25 +33,29 @@ export async function POST(req: NextRequest) {
 
     const driveRes = await drive.files.create({
       requestBody: {
-        name: `${memberName}_${Date.now()}.${file.name.split(".").pop()}`,
+        name: `chms_${memberName}_${Date.now()}.${file.name.split(".").pop()}`,
         mimeType: file.type,
       },
       media: {
         mimeType: file.type,
         body: stream,
       },
-      fields: "id",
+      fields: "id,webContentLink",
     });
 
     const fileId = driveRes.data.id;
+    if (!fileId) {
+      return NextResponse.json({ error: "Drive upload failed — no file ID" }, { status: 500 });
+    }
 
     // Make file publicly viewable
     await drive.permissions.create({
-      fileId: fileId!,
+      fileId,
       requestBody: { role: "reader", type: "anyone" },
     });
 
-    const photoUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+    // Use direct content link that works reliably for images
+    const photoUrl = `https://lh3.googleusercontent.com/d/${fileId}=w400`;
 
     // Update members sheet
     const memberRows = await readSheet(session.accessToken, "members");
@@ -63,7 +67,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, url: photoUrl });
   } catch (error) {
-    console.error("Photo upload failed:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("Photo upload failed:", errMsg);
+    return NextResponse.json({ error: `Upload failed: ${errMsg}` }, { status: 500 });
   }
 }

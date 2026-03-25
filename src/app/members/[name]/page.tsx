@@ -138,20 +138,30 @@ function MemberDetailContent() {
   };
 
   // Photo upload
+  const [uploadedPhoto, setUploadedPhoto] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || isDemo) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("member_name", name);
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("member_name", name);
     try {
-      const res = await fetch("/api/members/photo", { method: "POST", body: formData });
-      if (res.ok) {
-        const data = await res.json();
+      const res = await fetch("/api/members/photo", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setUploadedPhoto(data.url);
         setForm((f) => ({ ...f, photo_url: data.url }));
-        router.refresh();
+      } else {
+        alert("업로드 실패: " + (data.error || "알 수 없는 오류"));
       }
-    } catch { /* silently fail */ }
+    } catch {
+      alert("업로드 실패: 네트워크 오류");
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (!member) {
@@ -193,10 +203,15 @@ function MemberDetailContent() {
       {/* Header with avatar */}
       <div className="flex items-center gap-4">
         <div className="relative">
-          <Avatar name={member.name} photoUrl={member.photo_url} size="lg" />
-          {editing && (
+          <Avatar name={member.name} photoUrl={uploadedPhoto || member.photo_url} size="lg" />
+          {uploading && (
+            <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">...</span>
+            </div>
+          )}
+          {editing && !uploading && (
             <label className="absolute bottom-0 right-0 bg-navy-800 text-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer text-xs hover:bg-navy-700">
-              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
               +
             </label>
           )}
