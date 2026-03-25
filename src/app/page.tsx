@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
@@ -37,10 +37,18 @@ export default function Home() {
         )}
 
         {status === "authenticated" && session?.role === "unauthorized" && (
-          <div className="text-red-600 text-sm">
-            <p className="font-semibold mb-1">접근 권한이 없습니다</p>
-            <p>관리자에게 문의하세요.</p>
-            <p className="mt-2 text-xs text-gray-500">{session.user?.email}</p>
+          <div className="text-center">
+            <div className="text-red-600 text-sm mb-4">
+              <p className="font-semibold mb-1">접근 권한이 없습니다</p>
+              <p>관리자에게 문의하세요.</p>
+              <p className="mt-2 text-xs text-gray-500">{session.user?.email}</p>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              다른 계정으로 로그인
+            </button>
           </div>
         )}
 
