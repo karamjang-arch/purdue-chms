@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/members", label: "성도 목록", roles: ["admin"] },
   { href: "/members/new", label: "새가족 등록", roles: ["admin", "newcomer_team"] },
   { href: "/activities/new", label: "활동 기록", roles: ["admin"] },
+  { href: "/ministry", label: "봉사명부", roles: ["admin"] },
   { href: "/newcomers", label: "새가족 명단", roles: ["admin", "newcomer_team"] },
   { href: "/alumni", label: "알럼나이", roles: ["admin"] },
 ];

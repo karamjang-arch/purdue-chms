@@ -24,6 +24,10 @@ function DashboardContent() {
   const { data: members, loading: ml } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
   const { data: visitations, loading: vl } = useFetch<Visitation[]>("/api/visitations", DEMO_VISITATIONS);
 
+  // Calendar — pastoral appointments
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: calEvents } = useFetch<any[]>("/api/calendar", []);
+
   const stats = useMemo(() => {
     if (!members) return null;
     const active = members.filter((m) => m.status === "활동").length;
@@ -177,6 +181,41 @@ function DashboardContent() {
           </div>
         )}
       </div>
+
+      {/* Calendar — Pastoral appointments */}
+      {calEvents && calEvents.length > 0 && (
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h2 className="font-semibold text-navy-700 mb-3">심방 예정 (2주)</h2>
+          <div className="space-y-2">
+            {calEvents.map((ev: { id: string; start: string; inviteeName: string; title: string }) => {
+              const d = ev.start ? new Date(ev.start) : null;
+              const dateStr = d ? `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}` : "";
+              const matched = members?.find((m) => ev.inviteeName && m.name.includes(ev.inviteeName));
+              return (
+                <div key={ev.id} className="flex items-center justify-between text-sm border-l-2 border-blue-300 pl-3 py-1">
+                  <div>
+                    <span className="text-gray-500 mr-2">{dateStr}</span>
+                    {matched ? (
+                      <Link href={`/members/${encodeURIComponent(matched.name)}${demoSuffix}`} className="text-navy-700 hover:underline font-medium">
+                        {ev.inviteeName}
+                      </Link>
+                    ) : (
+                      <span className="text-navy-700 font-medium">{ev.inviteeName || ev.title}</span>
+                    )}
+                    {matched && <span className="text-xs text-gray-400 ml-1">({matched.department})</span>}
+                  </div>
+                  <Link
+                    href={`/activities/new${demoSuffix}${demoSuffix ? "&" : "?"}prefill_name=${encodeURIComponent(ev.inviteeName || "")}&prefill_type=심방`}
+                    className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded hover:bg-green-100"
+                  >
+                    완료 기록
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Lists */}
       <div className="grid md:grid-cols-2 gap-6">
