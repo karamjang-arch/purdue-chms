@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { readSheet, updateCell, indexToColumnLetter } from "@/lib/sheets";
 import { MEMBER_HEADERS } from "@/types";
 import { google } from "googleapis";
+import { Readable } from "stream";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -26,10 +27,7 @@ export async function POST(req: NextRequest) {
     const drive = google.drive({ version: "v3", auth });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { Readable } = await import("stream");
-    const stream = new Readable();
-    stream.push(buffer);
-    stream.push(null);
+    const stream = Readable.from(buffer);
 
     const driveRes = await drive.files.create({
       requestBody: {
