@@ -3,6 +3,7 @@
 import { useAuthOrDemo, useFetch, useDemoData } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
 import { Member, Visitation, TrainingRecord, MinistryRoster, Sacrament, MEMBER_HEADERS } from "@/types";
+import { getDisplayName } from "@/lib/display-name";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
@@ -235,7 +236,7 @@ function MemberDetailContent() {
           )}
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-navy-800">{member.name}</h1>
+          <h1 className="text-2xl font-bold text-navy-800">{members ? getDisplayName(member, members) : member.name}</h1>
           <p className="text-navy-500 text-sm">{member.name_en}</p>
         </div>
         <button
@@ -314,7 +315,7 @@ function MemberDetailContent() {
               >
                 <Avatar name={fm.name} photoUrl={fm.photo_url} size="sm" />
                 <div>
-                  <p className="font-medium text-navy-700 text-sm">{fm.name}</p>
+                  <p className="font-medium text-navy-700 text-sm">{members ? getDisplayName(fm, members) : fm.name}</p>
                   <p className="text-xs text-gray-500">{fm.family_role} · {fm.department}</p>
                 </div>
               </Link>

@@ -3,6 +3,7 @@
 import { useAuthOrDemo, useFetch } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
 import { Member } from "@/types";
+import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
@@ -63,7 +64,7 @@ function AlumniContent() {
               <tr key={m.name} className="hover:bg-navy-50/50">
                 <td className="px-4 py-3">
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="text-navy-700 hover:underline font-medium">
-                    {m.name}
+                    {members ? getDisplayName(m, members) : m.name}
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{m.major}</td>

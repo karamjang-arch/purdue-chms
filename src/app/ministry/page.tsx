@@ -3,6 +3,7 @@
 import { useAuthOrDemo, useFetch } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
 import { MinistryRoster, Member } from "@/types";
+import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
 import Link from "next/link";
@@ -210,7 +211,7 @@ function MinistryContent() {
                                   href={`/members/${encodeURIComponent(r.member_name)}${demoSuffix}`}
                                   className="text-sm text-navy-700 hover:underline font-medium"
                                 >
-                                  {r.member_name}
+                                  {m ? getDisplayName(m, members || []) : r.member_name}
                                 </Link>
                                 <span className="text-xs text-gray-400 ml-2">{r.role_in_team}</span>
                                 {!hasEmail && <span className="text-xs text-red-300 ml-2">이메일 미등록</span>}

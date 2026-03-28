@@ -3,6 +3,7 @@
 import { useAuthOrDemo, useFetch } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
 import { Member, DEPARTMENT_DISTRICTS } from "@/types";
+import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
@@ -26,7 +27,8 @@ function MembersContent() {
   const [filterStage, setFilterStage] = useState("");
   const [filterBaptism, setFilterBaptism] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "registered_date" | "last_contact">("name");
+  const [includeFamily, setIncludeFamily] = useState(false);
+  const [sortBy, setSortBy] = useState<"name" | "registered_date" | "last_contact" | "family">("name");
 
   const districtOptions = filterDept ? (DEPARTMENT_DISTRICTS[filterDept] || []) : [];
 
@@ -44,21 +46,50 @@ function MembersContent() {
           (m.company && m.company.toLowerCase().includes(q))
       );
     }
-    if (filterDept) list = list.filter((m) => m.department === filterDept);
-    if (filterDistrict) list = list.filter((m) => m.district === filterDistrict);
+    if (filterDept || filterDistrict) {
+      // First find directly matching members
+      let directMatch = list;
+      if (filterDept) directMatch = directMatch.filter((m) => m.department === filterDept);
+      if (filterDistrict) directMatch = directMatch.filter((m) => m.district === filterDistrict);
+
+      if (includeFamily && filterDistrict) {
+        // Also include family members (e.g. children in 주일학교) of matched members
+        const matchedTags = new Set(
+          directMatch.filter((m) => m.family_tag).map((m) => m.family_tag)
+        );
+        list = list.filter(
+          (m) =>
+            ((filterDept ? m.department === filterDept : true) &&
+            (filterDistrict ? m.district === filterDistrict : true)) ||
+            (m.family_tag !== "" && matchedTags.has(m.family_tag))
+        );
+      } else {
+        list = directMatch;
+      }
+    }
     if (filterRole) list = list.filter((m) => m.role === filterRole);
     if (filterStage) list = list.filter((m) => m.membership_stage === filterStage);
     if (filterBaptism) list = list.filter((m) => m.baptism === filterBaptism);
     if (filterStatus) list = list.filter((m) => m.status === filterStatus);
 
-    list.sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name, "ko");
-      if (sortBy === "registered_date") return b.registered_date.localeCompare(a.registered_date);
-      return (b.last_contact || "").localeCompare(a.last_contact || "");
-    });
+    if (sortBy === "family") {
+      const ROLE_ORDER: Record<string, number> = { "남편": 0, "아내": 1, "본인": 2, "첫째": 3, "둘째": 4, "셋째": 5, "자녀": 6 };
+      list.sort((a, b) => {
+        const tagA = a.family_tag || `__solo_${a.name}`;
+        const tagB = b.family_tag || `__solo_${b.name}`;
+        if (tagA !== tagB) return tagA.localeCompare(tagB, "ko");
+        return (ROLE_ORDER[a.family_role] ?? 99) - (ROLE_ORDER[b.family_role] ?? 99);
+      });
+    } else {
+      list.sort((a, b) => {
+        if (sortBy === "name") return a.name.localeCompare(b.name, "ko");
+        if (sortBy === "registered_date") return b.registered_date.localeCompare(a.registered_date);
+        return (b.last_contact || "").localeCompare(a.last_contact || "");
+      });
+    }
 
     return list;
-  }, [members, search, filterDept, filterDistrict, filterRole, filterStage, filterBaptism, filterStatus, sortBy]);
+  }, [members, search, filterDept, filterDistrict, includeFamily, filterRole, filterStage, filterBaptism, filterStatus, sortBy]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><p className="text-navy-400">로딩 중...</p></div>;
@@ -80,8 +111,8 @@ function MembersContent() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-300"
         />
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-          <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setFilterDistrict(""); }} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+        <div className="flex flex-wrap gap-2">
+          <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setFilterDistrict(""); setIncludeFamily(false); }} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
             <option value="">부서 전체</option>
             {Object.keys(DEPARTMENT_DISTRICTS).map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -89,6 +120,16 @@ function MembersContent() {
             <option value="">구역 전체</option>
             {districtOptions.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
+          {filterDistrict && (
+            <button
+              onClick={() => setIncludeFamily(!includeFamily)}
+              className={`rounded-lg px-2 py-1.5 text-sm font-medium transition-colors ${
+                includeFamily ? "bg-navy-800 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              가족 포함
+            </button>
+          )}
           <select value={filterStage} onChange={(e) => setFilterStage(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
             <option value="">멤버십 전체</option>
             {["Visitor", "Member", "Fellow", "Leader"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -109,6 +150,7 @@ function MembersContent() {
             <option value="name">이름순</option>
             <option value="registered_date">등록일순</option>
             <option value="last_contact">최근연락순</option>
+            <option value="family">가족별</option>
           </select>
         </div>
       </div>
@@ -127,13 +169,18 @@ function MembersContent() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.map((m) => (
-              <tr key={m.name + m.email} className="hover:bg-navy-50/50 transition-colors">
+            {filtered.map((m, idx) => {
+              const displayName = members ? getDisplayName(m, members) : m.name;
+              const prevTag = idx > 0 ? (filtered[idx - 1].family_tag || "") : "";
+              const curTag = m.family_tag || "";
+              const familyBorder = sortBy === "family" && idx > 0 && curTag !== prevTag;
+              return (
+              <tr key={m.name + m.email} className={`hover:bg-navy-50/50 transition-colors${familyBorder ? " border-t-2 border-navy-200" : ""}`}>
                 <td className="px-4 py-3">
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="flex items-center gap-2 text-navy-700 hover:underline font-medium">
                     <Avatar name={m.name} photoUrl={m.photo_url} size="sm" />
                     <span>
-                      {m.name}
+                      {displayName}
                       <span className="text-gray-400 text-xs ml-1 hidden sm:inline">{m.name_en}</span>
                     </span>
                   </Link>
@@ -153,7 +200,8 @@ function MembersContent() {
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell text-gray-500 text-xs">{m.phone}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         {filtered.length === 0 && (

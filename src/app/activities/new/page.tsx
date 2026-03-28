@@ -6,6 +6,7 @@ import {
   Member, ACTIVITY_TYPES, VISITATION_TYPES, TRAINING_COURSES,
   SACRAMENT_TYPES, MINISTRY_DEPARTMENTS, ActivityType,
 } from "@/types";
+import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo, Suspense } from "react";
 
@@ -170,7 +171,7 @@ function ActivityFormContent() {
                   }}
                   className="px-3 py-2 text-sm hover:bg-navy-50 cursor-pointer"
                 >
-                  {m.name} <span className="text-gray-400">({m.department})</span>
+                  {getDisplayName(m, members || [])} <span className="text-gray-400">({m.department})</span>
                 </li>
               ))}
             </ul>
