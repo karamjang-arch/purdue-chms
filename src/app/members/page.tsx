@@ -40,8 +40,8 @@ function MembersContent() {
       const q = search.toLowerCase();
       list = list.filter(
         (m) =>
-          m.name.toLowerCase().includes(q) ||
-          m.name_en.toLowerCase().includes(q) ||
+          m.name.startsWith(q) ||
+          m.name_en.toLowerCase().startsWith(q) ||
           m.major.toLowerCase().includes(q) ||
           (m.company && m.company.toLowerCase().includes(q))
       );
