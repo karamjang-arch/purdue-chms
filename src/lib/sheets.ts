@@ -70,6 +70,35 @@ export async function updateRow(
   });
 }
 
+export async function deleteRow(
+  accessToken: string,
+  tab: string,
+  rowIndex: number
+): Promise<void> {
+  const sheets = getSheetsClient(accessToken);
+  // Get sheet ID (gid) for the tab
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+  const sheet = meta.data.sheets?.find((s) => s.properties?.title === tab);
+  if (!sheet?.properties?.sheetId && sheet?.properties?.sheetId !== 0) {
+    throw new Error(`Sheet "${tab}" not found`);
+  }
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId: sheet.properties.sheetId,
+            dimension: "ROWS",
+            startIndex: rowIndex - 1, // 0-based
+            endIndex: rowIndex,
+          },
+        },
+      }],
+    },
+  });
+}
+
 export function indexToColumnLetter(index: number): string {
   let result = "";
   let i = index;

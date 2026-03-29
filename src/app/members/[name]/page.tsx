@@ -32,6 +32,8 @@ interface TimelineItem {
   title: string;
   detail: string;
   sub?: string;
+  id?: string;
+  sheet?: string;
 }
 
 function MemberDetailContent() {
@@ -90,16 +92,20 @@ function MemberDetailContent() {
     memberVisitations.forEach((v) => items.push({
       date: v.date, type: "심방", title: v.visitation_type, detail: v.summary,
       sub: v.prayer_requests ? `기도제목: ${v.prayer_requests}` : undefined,
+      id: v.id, sheet: "visitations",
     }));
     memberTraining.forEach((t) => items.push({
       date: t.completed_date, type: "교육", title: t.course, detail: t.notes,
+      id: t.id, sheet: "training_records",
     }));
     memberMinistry.forEach((m) => items.push({
       date: m.start_date, type: "봉사", title: m.department_ministry,
       detail: `${m.role_in_team} · ${m.period}`,
+      id: m.id, sheet: "ministry_roster",
     }));
     memberSacraments.forEach((s) => items.push({
       date: s.date, type: "세례·임직", title: s.type, detail: s.detail,
+      id: s.id, sheet: "sacraments",
     }));
     return items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [memberVisitations, memberTraining, memberMinistry, memberSacraments]);
@@ -108,6 +114,28 @@ function MemberDetailContent() {
     if (timelineFilter === "전체") return timeline;
     return timeline.filter((t) => t.type === timelineFilter);
   }, [timeline, timelineFilter]);
+
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const deleteActivity = async (item: TimelineItem) => {
+    if (!item.id || !item.sheet) return;
+    if (!confirm(`이 기록을 삭제하시겠습니까?\n\n유형: ${item.type}\n날짜: ${item.date}\n내용: ${item.title}\n\n이 작업은 되돌릴 수 없습니다.`)) return;
+    setDeleting(item.id);
+    try {
+      const res = await fetch(`/api/sheets/${item.sheet}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      await refetchMembers();
+      // Force page reload to refetch all timeline data
+      window.location.reload();
+    } catch {
+      alert("삭제에 실패했습니다.");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -378,13 +406,23 @@ function MemberDetailContent() {
         ) : (
           <div className="space-y-3">
             {filteredTimeline.map((item, i) => (
-              <div key={i} className="border-l-2 border-navy-200 pl-3">
+              <div key={item.id || i} className="border-l-2 border-navy-200 pl-3">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-medium text-navy-700">{item.date}</span>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${ACTIVITY_BADGE[item.type] || "bg-gray-100 text-gray-600"}`}>
                     {item.type}
                   </span>
-                  <span className="text-gray-500">{item.title}</span>
+                  <span className="text-gray-500 flex-1">{item.title}</span>
+                  {editing && item.id && (
+                    <button
+                      onClick={() => deleteActivity(item)}
+                      disabled={deleting === item.id}
+                      className="text-gray-300 hover:text-red-500 text-xs disabled:opacity-50"
+                      title="삭제"
+                    >
+                      {deleting === item.id ? "..." : "✕"}
+                    </button>
+                  )}
                 </div>
                 {item.detail && <p className="text-sm text-gray-700 mt-1">{item.detail}</p>}
                 {item.sub && <p className="text-xs text-gray-500 mt-1">{item.sub}</p>}
