@@ -63,7 +63,7 @@ function ActivityFormContent() {
     setSelectedNames(selectedNames.filter((n) => n !== name));
   };
 
-  const isMultiSelect = activityType === "행사" || activityType === "봉사";
+  const isMultiSelect = activityType !== "심방";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -258,6 +258,7 @@ function MemberDetailContent() {
             const editGroupName = editing && field.key === "group_name";
             const subDistOpts = form.department ? (DEPT_SUB_DISTRICTS[form.department] || []) : [];
             const groupOpts = form.sub_district ? (SUB_DISTRICT_GROUPS[form.sub_district] || []) : [];
+            const isDateField = ["birthday", "registered_date", "last_contact"].includes(field.key);
             return (
             <div key={field.key} className="flex">
               <span className="w-24 shrink-0 text-gray-500">{field.label}</span>
@@ -282,6 +283,7 @@ function MemberDetailContent() {
                   </select>
                 ) : (
                 <input
+                  type={isDateField ? "date" : "text"}
                   value={form[field.key] || ""}
                   onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                   className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"

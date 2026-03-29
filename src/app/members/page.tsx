@@ -5,7 +5,7 @@ import { DEMO_MEMBERS } from "@/lib/demo-data";
 import { Member, DEPT_SUB_DISTRICTS, SUB_DISTRICT_GROUPS } from "@/types";
 import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 
@@ -18,7 +18,7 @@ function MembersContent() {
     if (!isDemo && (!isAuthed || role !== "admin")) router.push("/");
   }, [isAuthed, role, isDemo, router]);
 
-  const { data: members, loading } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
+  const { data: members, loading, refetch } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
 
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
@@ -30,6 +30,8 @@ function MembersContent() {
   const [filterStatus, setFilterStatus] = useState("");
   const [includeFamily, setIncludeFamily] = useState(false);
   const [sortBy, setSortBy] = useState<"name" | "registered_date" | "last_contact" | "family">("name");
+  const [editMode, setEditMode] = useState(false);
+  const [savingRow, setSavingRow] = useState<string | null>(null);
 
   const subDistOptions = filterDept ? (DEPT_SUB_DISTRICTS[filterDept] || []) : [];
   const groupOptions = filterSubDist ? (SUB_DISTRICT_GROUPS[filterSubDist] || []) : [];
@@ -49,7 +51,6 @@ function MembersContent() {
       );
     }
 
-    // 3-level filter: department → sub_district → group_name
     if (filterDept || filterSubDist || filterGroup) {
       let directMatch = list;
       if (filterDept) directMatch = directMatch.filter((m) => m.department === filterDept);
@@ -81,7 +82,6 @@ function MembersContent() {
 
     if (sortBy === "family") {
       const ROLE_ORDER: Record<string, number> = { "남편": 0, "아내": 1, "본인": 2, "첫째": 3, "둘째": 4, "셋째": 5, "자녀": 6 };
-
       const familyInfo: Record<string, { headName: string; hasLeader: boolean }> = {};
       list.forEach((m) => {
         const tag = m.family_tag || `__solo_${m.name}`;
@@ -91,7 +91,6 @@ function MembersContent() {
         }
         if (m.group_role === "구역장" || m.role === "구역장") familyInfo[tag].hasLeader = true;
       });
-
       list.sort((a, b) => {
         const tagA = a.family_tag || `__solo_${a.name}`;
         const tagB = b.family_tag || `__solo_${b.name}`;
@@ -114,6 +113,27 @@ function MembersContent() {
     return list;
   }, [members, search, filterDept, filterSubDist, filterGroup, includeFamily, filterRole, filterStage, filterBaptism, filterStatus, sortBy]);
 
+  // Inline edit save
+  const saveField = useCallback(async (memberName: string, field: string, value: string, extra?: Record<string, string>) => {
+    if (isDemo) return;
+    const key = `${memberName}-${field}`;
+    setSavingRow(key);
+    try {
+      const body: Record<string, string> = { originalName: memberName, [field]: value };
+      if (extra) Object.assign(body, extra);
+      await fetch("/api/members", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      await refetch();
+    } catch {
+      alert("저장 실패");
+    } finally {
+      setSavingRow(null);
+    }
+  }, [isDemo, refetch]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><p className="text-navy-400">로딩 중...</p></div>;
   }
@@ -122,7 +142,17 @@ function MembersContent() {
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-navy-800">성도 목록</h1>
-        <span className="text-sm text-navy-500">{filtered.length}명</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-navy-500">{filtered.length}명</span>
+          <button
+            onClick={() => setEditMode(!editMode)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              editMode ? "bg-navy-800 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {editMode ? "편집 완료" : "편집 모드"}
+          </button>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -197,12 +227,13 @@ function MembersContent() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-navy-50 text-navy-700">
-              <th className="text-left px-4 py-3 font-semibold">이름</th>
-              <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">부서</th>
-              <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">소속</th>
-              <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">소그룹</th>
-              <th className="text-left px-4 py-3 font-semibold">멤버십</th>
-              <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">연락처</th>
+              <th className="text-left px-3 py-3 font-semibold">이름</th>
+              <th className="text-left px-3 py-3 font-semibold hidden md:table-cell">소속</th>
+              <th className="text-left px-3 py-3 font-semibold hidden md:table-cell">소그룹</th>
+              {editMode && <th className="text-left px-3 py-3 font-semibold hidden lg:table-cell">역할</th>}
+              <th className="text-left px-3 py-3 font-semibold">멤버십</th>
+              <th className="text-left px-3 py-3 font-semibold hidden sm:table-cell">연락처</th>
+              <th className="text-left px-3 py-3 font-semibold hidden lg:table-cell">메모</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -211,21 +242,62 @@ function MembersContent() {
               const prevTag = idx > 0 ? (filtered[idx - 1].family_tag || "") : "";
               const curTag = m.family_tag || "";
               const familyBorder = sortBy === "family" && idx > 0 && curTag !== prevTag;
+              const rowSubDistOpts = m.department ? (DEPT_SUB_DISTRICTS[m.department] || []) : [];
+              const rowGroupOpts = m.sub_district ? (SUB_DISTRICT_GROUPS[m.sub_district] || []) : [];
+              const isSaving = savingRow?.startsWith(m.name + "-");
+
               return (
-              <tr key={`${m.name}-${m.phone}-${idx}`} className={`hover:bg-navy-50/50 transition-colors${familyBorder ? " border-t-2 border-navy-200" : ""}`}>
-                <td className="px-4 py-3">
+              <tr key={`${m.name}-${m.phone}-${idx}`} className={`hover:bg-navy-50/50 transition-colors${familyBorder ? " border-t-2 border-navy-200" : ""}${isSaving ? " opacity-50" : ""}`}>
+                <td className="px-3 py-2">
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="flex items-center gap-2 text-navy-700 hover:underline font-medium">
                     <Avatar name={m.name} photoUrl={m.photo_url} size="sm" />
-                    <span>
+                    <span className="truncate max-w-[120px]">
                       {displayName}
                       <span className="text-gray-400 text-xs ml-1 hidden sm:inline">{m.name_en}</span>
                     </span>
                   </Link>
                 </td>
-                <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.department}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.sub_district}</td>
-                <td className="px-4 py-3 hidden lg:table-cell text-gray-600">{m.group_name}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2 hidden md:table-cell">
+                  {editMode && rowSubDistOpts.length > 0 ? (
+                    <select
+                      value={m.sub_district}
+                      onChange={(e) => saveField(m.name, "sub_district", e.target.value, { group_name: "" })}
+                      className="border border-gray-200 rounded px-1 py-0.5 text-xs w-full max-w-[100px]"
+                    >
+                      <option value="">-</option>
+                      {rowSubDistOpts.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-gray-600 text-xs">{m.sub_district}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2 hidden md:table-cell">
+                  {editMode && rowGroupOpts.length > 0 ? (
+                    <select
+                      value={m.group_name}
+                      onChange={(e) => saveField(m.name, "group_name", e.target.value)}
+                      className="border border-gray-200 rounded px-1 py-0.5 text-xs w-full max-w-[100px]"
+                    >
+                      <option value="">-</option>
+                      {rowGroupOpts.map((g) => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-gray-600 text-xs">{m.group_name}</span>
+                  )}
+                </td>
+                {editMode && (
+                  <td className="px-3 py-2 hidden lg:table-cell">
+                    <select
+                      value={m.group_role}
+                      onChange={(e) => saveField(m.name, "group_role", e.target.value)}
+                      className="border border-gray-200 rounded px-1 py-0.5 text-xs w-full max-w-[90px]"
+                    >
+                      <option value="">-</option>
+                      {["구역장", "부구역장", "조장", "부조장", "조원", "반교사"].map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </td>
+                )}
+                <td className="px-3 py-2">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
                     m.membership_stage === "Leader" ? "bg-purple-100 text-purple-700" :
                     m.membership_stage === "Fellow" ? "bg-blue-100 text-blue-700" :
@@ -235,7 +307,10 @@ function MembersContent() {
                     {m.membership_stage}
                   </span>
                 </td>
-                <td className="px-4 py-3 hidden sm:table-cell text-gray-500 text-xs">{m.phone}</td>
+                <td className="px-3 py-2 hidden sm:table-cell text-gray-500 text-xs">{m.phone}</td>
+                <td className="px-3 py-2 hidden lg:table-cell text-gray-400 text-xs truncate max-w-[120px]" title={m.memo}>
+                  {m.memo ? m.memo.slice(0, 20) + (m.memo.length > 20 ? "..." : "") : ""}
+                </td>
               </tr>
               );
             })}

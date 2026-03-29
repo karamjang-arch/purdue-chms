@@ -12,7 +12,7 @@ const INITIAL_FORM: Record<string, string> = {
   phone: "", email: "", address: "", department: "", district: "", sub_district: "",
   baptism: "", previous_church: "", school: "", grade: "", major: "",
   company: "", graduation_year: "", family_tag: "", family_role: "",
-  group_name: "", group_role: "",
+  group_name: "", group_role: "", memo: "",
 };
 
 function NewMemberContent() {
@@ -188,6 +188,12 @@ function NewMemberContent() {
           <Combobox label="전공" value={form.major} onChange={(v) => handleChange("major", v)} options={PURDUE_MAJORS} />
           <Field label="직장" value={form.company} onChange={(v) => handleChange("company", v)} />
           <Field label="졸업연도" value={form.graduation_year} onChange={(v) => handleChange("graduation_year", v)} />
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">메모</label>
+            <textarea value={form.memo} onChange={(e) => handleChange("memo", e.target.value)}
+              rows={2} placeholder="특이사항, 방문 경위 등"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-300" />
+          </div>
           <Field label="가족태그" value={form.family_tag} onChange={(v) => handleChange("family_tag", v)} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">가족역할</label>
