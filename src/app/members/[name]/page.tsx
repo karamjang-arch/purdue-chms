@@ -2,7 +2,7 @@
 
 import { useAuthOrDemo, useFetch, useDemoData } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
-import { Member, Visitation, TrainingRecord, MinistryRoster, Sacrament, MEMBER_HEADERS } from "@/types";
+import { Member, Visitation, TrainingRecord, MinistryRoster, Sacrament, MEMBER_HEADERS, DEPARTMENT_DISTRICTS } from "@/types";
 import { getDisplayName } from "@/lib/display-name";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
@@ -46,7 +46,7 @@ function MemberDetailContent() {
     if (!isDemo && (!isAuthed || role !== "admin")) router.push("/");
   }, [isAuthed, role, isDemo, router]);
 
-  const { data: members } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
+  const { data: members, refetch: refetchMembers } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
   const { data: visitations } = useFetch<Visitation[]>("/api/visitations", demo.visitations);
   const { data: training } = useFetch<TrainingRecord[]>("/api/sheets/training_records", demo.training);
   const { data: ministry } = useFetch<MinistryRoster[]>("/api/sheets/ministry_roster", demo.ministry);
@@ -125,13 +125,14 @@ function MemberDetailContent() {
     if (isDemo) { setEditing(false); return; }
     setSaving(true);
     try {
-      await fetch("/api/members", {
+      const res = await fetch("/api/members", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ originalName: name, ...form }),
       });
+      if (!res.ok) throw new Error("Save failed");
       setEditing(false);
-      router.refresh();
+      await refetchMembers();
     } catch {
       alert("저장에 실패했습니다.");
     } finally {
@@ -252,15 +253,42 @@ function MemberDetailContent() {
       <div className="bg-white rounded-xl p-4 shadow-sm">
         <h2 className="font-semibold text-navy-700 mb-3">인적사항 / 교회 정보</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {infoFields.map((field) => (
+          {infoFields.map((field) => {
+            const isGroupNameDropdown = editing && field.key === "group_name" && form.department === "장년부";
+            const isDistrictDropdown = editing && field.key === "district" && form.department && DEPARTMENT_DISTRICTS[form.department]?.length > 0;
+            return (
             <div key={field.key} className="flex">
               <span className="w-24 shrink-0 text-gray-500">{field.label}</span>
               {editing ? (
+                isGroupNameDropdown ? (
+                  <select
+                    value={form[field.key] || ""}
+                    onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                    className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"
+                  >
+                    <option value="">미배정</option>
+                    {["1구역", "2구역", "3구역", "4구역", "5구역", "6구역", "7구역", "8구역", "9구역", "10구역", "11구역", "12구역", "13구역"].map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                ) : isDistrictDropdown ? (
+                  <select
+                    value={form[field.key] || ""}
+                    onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                    className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"
+                  >
+                    <option value="">미배정</option>
+                    {DEPARTMENT_DISTRICTS[form.department].map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                ) : (
                 <input
                   value={form[field.key] || ""}
                   onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                   className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"
                 />
+                )
               ) : (
                 <span className="text-navy-800">
                   {(member as unknown as Record<string, string>)[field.key] || "-"}
@@ -268,7 +296,8 @@ function MemberDetailContent() {
                 </span>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

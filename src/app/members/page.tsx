@@ -74,10 +74,29 @@ function MembersContent() {
 
     if (sortBy === "family") {
       const ROLE_ORDER: Record<string, number> = { "남편": 0, "아내": 1, "본인": 2, "첫째": 3, "둘째": 4, "셋째": 5, "자녀": 6 };
+
+      // Build family info: head name + whether family contains 구역장
+      const familyInfo: Record<string, { headName: string; hasLeader: boolean }> = {};
+      list.forEach((m) => {
+        const tag = m.family_tag || `__solo_${m.name}`;
+        if (!familyInfo[tag]) familyInfo[tag] = { headName: m.name, hasLeader: false };
+        if (m.family_role === "남편" || (!familyInfo[tag].headName && m.family_role === "본인")) {
+          familyInfo[tag].headName = m.name;
+        }
+        if (m.group_role === "구역장" || m.role === "구역장") familyInfo[tag].hasLeader = true;
+      });
+
       list.sort((a, b) => {
         const tagA = a.family_tag || `__solo_${a.name}`;
         const tagB = b.family_tag || `__solo_${b.name}`;
-        if (tagA !== tagB) return tagA.localeCompare(tagB, "ko");
+        if (tagA !== tagB) {
+          const infoA = familyInfo[tagA];
+          const infoB = familyInfo[tagB];
+          // 구역장 가정 최상위
+          if (infoA.hasLeader !== infoB.hasLeader) return infoA.hasLeader ? -1 : 1;
+          // 가장(남편) 가나다순
+          return infoA.headName.localeCompare(infoB.headName, "ko");
+        }
         return (ROLE_ORDER[a.family_role] ?? 99) - (ROLE_ORDER[b.family_role] ?? 99);
       });
     } else {
@@ -116,7 +135,7 @@ function MembersContent() {
             <option value="">부서 전체</option>
             {Object.keys(DEPARTMENT_DISTRICTS).map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
-          <select value={filterDistrict} onChange={(e) => setFilterDistrict(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" disabled={!districtOptions.length}>
+          <select value={filterDistrict} onChange={(e) => { setFilterDistrict(e.target.value); if (e.target.value) setSortBy("family"); }} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" disabled={!districtOptions.length}>
             <option value="">구역 전체</option>
             {districtOptions.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
