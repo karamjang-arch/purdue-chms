@@ -2,7 +2,7 @@
 
 import { useAuthOrDemo, useFetch } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
-import { Member, DEPARTMENT_DISTRICTS } from "@/types";
+import { Member, DEPT_SUB_DISTRICTS, SUB_DISTRICT_GROUPS } from "@/types";
 import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
@@ -22,7 +22,8 @@ function MembersContent() {
 
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
-  const [filterDistrict, setFilterDistrict] = useState("");
+  const [filterSubDist, setFilterSubDist] = useState("");
+  const [filterGroup, setFilterGroup] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [filterStage, setFilterStage] = useState("");
   const [filterBaptism, setFilterBaptism] = useState("");
@@ -30,7 +31,8 @@ function MembersContent() {
   const [includeFamily, setIncludeFamily] = useState(false);
   const [sortBy, setSortBy] = useState<"name" | "registered_date" | "last_contact" | "family">("name");
 
-  const districtOptions = filterDept ? (DEPARTMENT_DISTRICTS[filterDept] || []) : [];
+  const subDistOptions = filterDept ? (DEPT_SUB_DISTRICTS[filterDept] || []) : [];
+  const groupOptions = filterSubDist ? (SUB_DISTRICT_GROUPS[filterSubDist] || []) : [];
 
   const filtered = useMemo(() => {
     if (!members) return [];
@@ -46,27 +48,32 @@ function MembersContent() {
           (m.company && m.company.toLowerCase().includes(q))
       );
     }
-    if (filterDept || filterDistrict) {
-      // First find directly matching members
+
+    // 3-level filter: department → sub_district → group_name
+    if (filterDept || filterSubDist || filterGroup) {
       let directMatch = list;
       if (filterDept) directMatch = directMatch.filter((m) => m.department === filterDept);
-      if (filterDistrict) directMatch = directMatch.filter((m) => m.district === filterDistrict);
+      if (filterSubDist) directMatch = directMatch.filter((m) => m.sub_district === filterSubDist);
+      if (filterGroup) directMatch = directMatch.filter((m) => m.group_name === filterGroup);
 
-      if (includeFamily && filterDistrict) {
-        // Also include family members (e.g. children in 주일학교) of matched members
+      if (includeFamily && (filterSubDist || filterGroup)) {
         const matchedTags = new Set(
           directMatch.filter((m) => m.family_tag).map((m) => m.family_tag)
         );
         list = list.filter(
-          (m) =>
-            ((filterDept ? m.department === filterDept : true) &&
-            (filterDistrict ? m.district === filterDistrict : true)) ||
-            (m.family_tag !== "" && matchedTags.has(m.family_tag))
+          (m) => {
+            const directOk =
+              (filterDept ? m.department === filterDept : true) &&
+              (filterSubDist ? m.sub_district === filterSubDist : true) &&
+              (filterGroup ? m.group_name === filterGroup : true);
+            return directOk || (m.family_tag !== "" && matchedTags.has(m.family_tag));
+          }
         );
       } else {
         list = directMatch;
       }
     }
+
     if (filterRole) list = list.filter((m) => m.role === filterRole);
     if (filterStage) list = list.filter((m) => m.membership_stage === filterStage);
     if (filterBaptism) list = list.filter((m) => m.baptism === filterBaptism);
@@ -75,7 +82,6 @@ function MembersContent() {
     if (sortBy === "family") {
       const ROLE_ORDER: Record<string, number> = { "남편": 0, "아내": 1, "본인": 2, "첫째": 3, "둘째": 4, "셋째": 5, "자녀": 6 };
 
-      // Build family info: head name + whether family contains 구역장
       const familyInfo: Record<string, { headName: string; hasLeader: boolean }> = {};
       list.forEach((m) => {
         const tag = m.family_tag || `__solo_${m.name}`;
@@ -92,9 +98,7 @@ function MembersContent() {
         if (tagA !== tagB) {
           const infoA = familyInfo[tagA];
           const infoB = familyInfo[tagB];
-          // 구역장 가정 최상위
           if (infoA.hasLeader !== infoB.hasLeader) return infoA.hasLeader ? -1 : 1;
-          // 가장(남편) 가나다순
           return infoA.headName.localeCompare(infoB.headName, "ko");
         }
         return (ROLE_ORDER[a.family_role] ?? 99) - (ROLE_ORDER[b.family_role] ?? 99);
@@ -108,7 +112,7 @@ function MembersContent() {
     }
 
     return list;
-  }, [members, search, filterDept, filterDistrict, includeFamily, filterRole, filterStage, filterBaptism, filterStatus, sortBy]);
+  }, [members, search, filterDept, filterSubDist, filterGroup, includeFamily, filterRole, filterStage, filterBaptism, filterStatus, sortBy]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><p className="text-navy-400">로딩 중...</p></div>;
@@ -131,15 +135,29 @@ function MembersContent() {
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-300"
         />
         <div className="flex flex-wrap gap-2">
-          <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setFilterDistrict(""); setIncludeFamily(false); }} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+          <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setFilterSubDist(""); setFilterGroup(""); setIncludeFamily(false); }} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
             <option value="">부서 전체</option>
-            {Object.keys(DEPARTMENT_DISTRICTS).map((d) => <option key={d} value={d}>{d}</option>)}
+            {Object.keys(DEPT_SUB_DISTRICTS).map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
-          <select value={filterDistrict} onChange={(e) => { setFilterDistrict(e.target.value); if (e.target.value) setSortBy("family"); }} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" disabled={!districtOptions.length}>
-            <option value="">구역 전체</option>
-            {districtOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+          <select
+            value={filterSubDist}
+            onChange={(e) => { setFilterSubDist(e.target.value); setFilterGroup(""); if (e.target.value) setSortBy("family"); }}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+            disabled={!subDistOptions.length}
+          >
+            <option value="">소속 전체</option>
+            {subDistOptions.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
-          {filterDistrict && (
+          <select
+            value={filterGroup}
+            onChange={(e) => { setFilterGroup(e.target.value); if (e.target.value) setSortBy("family"); }}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+            disabled={!groupOptions.length}
+          >
+            <option value="">소그룹 전체</option>
+            {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+          {(filterSubDist || filterGroup) && (
             <button
               onClick={() => setIncludeFamily(!includeFamily)}
               className={`rounded-lg px-2 py-1.5 text-sm font-medium transition-colors ${
@@ -181,7 +199,7 @@ function MembersContent() {
             <tr className="bg-navy-50 text-navy-700">
               <th className="text-left px-4 py-3 font-semibold">이름</th>
               <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">부서</th>
-              <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">구역</th>
+              <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">소속</th>
               <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">소그룹</th>
               <th className="text-left px-4 py-3 font-semibold">멤버십</th>
               <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">연락처</th>
@@ -205,7 +223,7 @@ function MembersContent() {
                   </Link>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.department}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.district}</td>
+                <td className="px-4 py-3 hidden md:table-cell text-gray-600">{m.sub_district}</td>
                 <td className="px-4 py-3 hidden lg:table-cell text-gray-600">{m.group_name}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${

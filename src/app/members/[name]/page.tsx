@@ -2,7 +2,7 @@
 
 import { useAuthOrDemo, useFetch, useDemoData } from "@/lib/hooks";
 import { DEMO_MEMBERS } from "@/lib/demo-data";
-import { Member, Visitation, TrainingRecord, MinistryRoster, Sacrament, MEMBER_HEADERS, DEPARTMENT_DISTRICTS } from "@/types";
+import { Member, Visitation, TrainingRecord, MinistryRoster, Sacrament, MEMBER_HEADERS, DEPT_SUB_DISTRICTS, SUB_DISTRICT_GROUPS } from "@/types";
 import { getDisplayName } from "@/lib/display-name";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
@@ -191,12 +191,12 @@ function MemberDetailContent() {
     { label: "이메일", key: "email" },
     { label: "주소", key: "address" },
     { label: "부서", key: "department" },
-    { label: "구역", key: "district" },
+    { label: "소속", key: "sub_district" },
+    { label: "소그룹", key: "group_name" },
+    { label: "소그룹역할", key: "group_role" },
     { label: "직분", key: "role" },
     { label: "세례", key: "baptism", suffix: baptismDate ? ` (${baptismDate})` : "" },
     { label: "봉사", key: "ministry" },
-    { label: "소그룹", key: "group_name" },
-    { label: "소그룹역할", key: "group_role" },
     { label: "등록일", key: "registered_date" },
     { label: "이전교회", key: "previous_church" },
     { label: "학교", key: "school" },
@@ -254,37 +254,31 @@ function MemberDetailContent() {
         <h2 className="font-semibold text-navy-700 mb-3">인적사항 / 교회 정보</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           {infoFields.map((field) => {
-            const isGroupNameDropdown = editing && field.key === "group_name";
-            const isDistrictDropdown = editing && field.key === "district" && form.department && DEPARTMENT_DISTRICTS[form.department]?.length > 0;
+            const editSubDist = editing && field.key === "sub_district";
+            const editGroupName = editing && field.key === "group_name";
+            const subDistOpts = form.department ? (DEPT_SUB_DISTRICTS[form.department] || []) : [];
+            const groupOpts = form.sub_district ? (SUB_DISTRICT_GROUPS[form.sub_district] || []) : [];
             return (
             <div key={field.key} className="flex">
               <span className="w-24 shrink-0 text-gray-500">{field.label}</span>
               {editing ? (
-                isGroupNameDropdown ? (
+                editSubDist && subDistOpts.length > 0 ? (
                   <select
                     value={form[field.key] || ""}
-                    onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                    onChange={(e) => setForm({ ...form, sub_district: e.target.value, group_name: "" })}
                     className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"
                   >
                     <option value="">미배정</option>
-                    {["1구역", "2구역", "3구역", "4구역", "5구역", "6구역", "7구역", "8구역", "9구역", "10구역", "11구역", "12구역", "13구역"].map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                    <option disabled>──────</option>
-                    {["영아부", "유아부", "유초등부", "중고등부"].map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
+                    {subDistOpts.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
-                ) : isDistrictDropdown ? (
+                ) : editGroupName && groupOpts.length > 0 ? (
                   <select
                     value={form[field.key] || ""}
                     onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                     className="flex-1 border border-gray-200 rounded px-2 py-0.5 text-sm"
                   >
                     <option value="">미배정</option>
-                    {DEPARTMENT_DISTRICTS[form.department].map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
+                    {groupOpts.map((g) => <option key={g} value={g}>{g}</option>)}
                   </select>
                 ) : (
                 <input

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthOrDemo } from "@/lib/hooks";
-import { DEPARTMENT_DISTRICTS } from "@/types";
+import { DEPT_SUB_DISTRICTS, SUB_DISTRICT_GROUPS } from "@/types";
 import { PURDUE_MAJORS } from "@/lib/purdue-majors";
 import Combobox from "@/components/Combobox";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,7 @@ import { useEffect, useState, Suspense } from "react";
 
 const INITIAL_FORM: Record<string, string> = {
   name: "", name_en: "", gender: "", birthday: "", birth_month_day: "",
-  phone: "", email: "", address: "", department: "", district: "",
+  phone: "", email: "", address: "", department: "", district: "", sub_district: "",
   baptism: "", previous_church: "", school: "", grade: "", major: "",
   company: "", graduation_year: "", family_tag: "", family_role: "",
   group_name: "", group_role: "",
@@ -30,20 +30,14 @@ function NewMemberContent() {
   const [saving, setSaving] = useState(false);
   const [birthPrivate, setBirthPrivate] = useState(false);
 
-  const districtOptions = form.department ? (DEPARTMENT_DISTRICTS[form.department] || []) : [];
-
-  // Group name options based on department/district
-  const groupOptions = (() => {
-    if (form.district === "작은불꽃") return ["1조", "2조", "3조", "4조", "5조", "6조", "7조"];
-    if (form.department === "주일학교") return ["1반", "2반", "3반"];
-    return [];
-  })();
+  const subDistOptions = form.department ? (DEPT_SUB_DISTRICTS[form.department] || []) : [];
+  const groupOptions = form.sub_district ? (SUB_DISTRICT_GROUPS[form.sub_district] || []) : [];
 
   const handleChange = (key: string, value: string) => {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "department") { next.district = ""; next.group_name = ""; }
-      if (key === "district") { next.group_name = ""; }
+      if (key === "department") { next.district = value; next.sub_district = ""; next.group_name = ""; }
+      if (key === "sub_district") { next.group_name = ""; }
       return next;
     });
   };
@@ -142,14 +136,14 @@ function NewMemberContent() {
             <label className="block text-sm font-medium text-gray-700 mb-1">부서</label>
             <select value={form.department} onChange={(e) => handleChange("department", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
               <option value="">선택</option>
-              {Object.keys(DEPARTMENT_DISTRICTS).map((d) => <option key={d} value={d}>{d}</option>)}
+              {Object.keys(DEPT_SUB_DISTRICTS).map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">구역</label>
-            <select value={form.district} onChange={(e) => handleChange("district", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" disabled={!districtOptions.length}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">소속</label>
+            <select value={form.sub_district} onChange={(e) => handleChange("sub_district", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" disabled={!subDistOptions.length}>
               <option value="">선택</option>
-              {districtOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+              {subDistOptions.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 

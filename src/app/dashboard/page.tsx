@@ -51,7 +51,7 @@ function DashboardContent() {
     // District bar (장년부)
     const distMap: Record<string, number> = {};
     members.filter((m) => m.department === "장년부" && m.status === "활동").forEach((m) => {
-      const d = m.district || "미지정";
+      const d = m.group_name || "미배정";
       distMap[d] = (distMap[d] || 0) + 1;
     });
     const distBar = Object.entries(distMap)

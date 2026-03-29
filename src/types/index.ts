@@ -12,6 +12,7 @@ export interface Member {
   address: string;
   department: string;
   district: string;
+  sub_district: string;
   role: string;
   baptism: string;
   ministry: string;
@@ -108,7 +109,7 @@ export const ACTIVITY_TYPES: ActivityType[] = [
 export const MEMBER_HEADERS = [
   "name", "name_en", "status", "membership_stage", "member_class", "gender",
   "birthday", "birth_month_day", "phone", "email", "address",
-  "department", "district", "role", "baptism", "ministry",
+  "department", "district", "sub_district", "role", "baptism", "ministry",
   "registered_date", "previous_church", "school", "grade", "major", "company",
   "graduation_year", "family_tag", "family_role", "group_name", "group_role",
   "last_contact", "memo", "welcome_table", "gospel_start", "fellow_table",
@@ -121,8 +122,31 @@ export const VISITATION_HEADERS = [
   "follow_up_done", "recorded_by", "created_at"
 ] as const;
 
+/** 부서 → 소속 (sub_district) 매핑 */
+export const DEPT_SUB_DISTRICTS: Record<string, string[]> = {
+  "장년부": ["1교구", "2교구", "3교구"],
+  "청년부": ["작은불꽃", "실로암", "코너스톤"],
+  "주일학교": ["영아부", "유아부", "유초등부", "중고등부"],
+  "알럼나이": [],
+};
+
+/** 소속 → 소그룹 (group_name) 매핑 */
+export const SUB_DISTRICT_GROUPS: Record<string, string[]> = {
+  "1교구": ["1구역", "2구역", "3구역", "4구역"],
+  "2교구": ["5구역", "6구역", "7구역", "8구역"],
+  "3교구": ["9구역", "10구역", "11구역", "12구역", "13구역"],
+  "작은불꽃": ["1조", "2조", "3조", "4조", "5조", "6조", "7조"],
+  "실로암": ["장암미조", "최재익조", "김한진조", "최재인조"],
+  "코너스톤": [],
+  "영아부": [],
+  "유아부": [],
+  "유초등부": [],
+  "중고등부": [],
+};
+
+/** (deprecated) 하위 호환용 */
 export const DEPARTMENT_DISTRICTS: Record<string, string[]> = {
-  "장년부": ["1구역", "2구역", "3구역", "4구역", "5구역", "6구역", "7구역", "8구역", "9구역", "10구역", "11구역", "12구역", "13구역"],
+  "장년부": ["1교구", "2교구", "3교구"],
   "청년부": ["작은불꽃", "실로암", "코너스톤"],
   "주일학교": ["영아부", "유아부", "유초등부", "중고등부"],
   "알럼나이": [],
