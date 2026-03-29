@@ -61,7 +61,7 @@ function AlumniContent() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {alumni.map((m) => (
-              <tr key={m.name} className="hover:bg-navy-50/50">
+              <tr key={`${m.name}-${m.phone}`} className="hover:bg-navy-50/50">
                 <td className="px-4 py-3">
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="text-navy-700 hover:underline font-medium">
                     {members ? getDisplayName(m, members) : m.name}

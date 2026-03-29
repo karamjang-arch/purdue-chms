@@ -254,7 +254,7 @@ function MemberDetailContent() {
         <h2 className="font-semibold text-navy-700 mb-3">인적사항 / 교회 정보</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           {infoFields.map((field) => {
-            const isGroupNameDropdown = editing && field.key === "group_name" && form.department === "장년부";
+            const isGroupNameDropdown = editing && field.key === "group_name";
             const isDistrictDropdown = editing && field.key === "district" && form.department && DEPARTMENT_DISTRICTS[form.department]?.length > 0;
             return (
             <div key={field.key} className="flex">
@@ -268,6 +268,10 @@ function MemberDetailContent() {
                   >
                     <option value="">미배정</option>
                     {["1구역", "2구역", "3구역", "4구역", "5구역", "6구역", "7구역", "8구역", "9구역", "10구역", "11구역", "12구역", "13구역"].map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                    <option disabled>──────</option>
+                    {["영아부", "유아부", "유초등부", "중고등부"].map((g) => (
                       <option key={g} value={g}>{g}</option>
                     ))}
                   </select>

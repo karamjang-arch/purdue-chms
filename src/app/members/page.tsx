@@ -194,7 +194,7 @@ function MembersContent() {
               const curTag = m.family_tag || "";
               const familyBorder = sortBy === "family" && idx > 0 && curTag !== prevTag;
               return (
-              <tr key={m.name + m.email} className={`hover:bg-navy-50/50 transition-colors${familyBorder ? " border-t-2 border-navy-200" : ""}`}>
+              <tr key={`${m.name}-${m.phone}-${idx}`} className={`hover:bg-navy-50/50 transition-colors${familyBorder ? " border-t-2 border-navy-200" : ""}`}>
                 <td className="px-4 py-3">
                   <Link href={`/members/${encodeURIComponent(m.name)}${demoSuffix}`} className="flex items-center gap-2 text-navy-700 hover:underline font-medium">
                     <Avatar name={m.name} photoUrl={m.photo_url} size="sm" />
