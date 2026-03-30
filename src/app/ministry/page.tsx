@@ -6,6 +6,7 @@ import { MinistryRoster, Member, MINISTRY_DEPARTMENTS } from "@/types";
 import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 
@@ -25,8 +26,16 @@ function MinistryContent() {
   );
   const { data: members } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
 
-  const [search, setSearch] = useState("");
-  const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
+  const [search, setSearch] = usePersistedState("chms-ministry-search", "");
+  const [expandedList, setExpandedList] = usePersistedState<string[]>("chms-ministry-expanded", []);
+  const expandedDepts = useMemo(() => new Set(expandedList), [expandedList]);
+  const setExpandedDepts = useCallback((fn: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    if (typeof fn === "function") {
+      setExpandedList((prev) => Array.from(fn(new Set(prev))));
+    } else {
+      setExpandedList(Array.from(fn));
+    }
+  }, [setExpandedList]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ member_name: "", department_ministry: "", team: "", role_in_team: "" });

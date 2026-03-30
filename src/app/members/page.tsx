@@ -6,6 +6,7 @@ import { Member, DEPT_SUB_DISTRICTS, SUB_DISTRICT_GROUPS } from "@/types";
 import { getDisplayName } from "@/lib/display-name";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 
@@ -25,17 +26,17 @@ function MembersContent() {
 
   const { data: members, loading, refetch } = useFetch<Member[]>("/api/members", DEMO_MEMBERS);
 
-  const [search, setSearch] = useState("");
-  const [filterDept, setFilterDept] = useState("");
-  const [filterSubDist, setFilterSubDist] = useState("");
-  const [filterGroup, setFilterGroup] = useState("");
-  const [filterRole, setFilterRole] = useState("");
-  const [filterStage, setFilterStage] = useState("");
-  const [filterBaptism, setFilterBaptism] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [includeFamily, setIncludeFamily] = useState(false);
-  const [sortBy, setSortBy] = useState<"name" | "registered_date" | "last_contact" | "family">("name");
-  const [editMode, setEditMode] = useState(false);
+  const [search, setSearch] = usePersistedState("chms-members-search", "");
+  const [filterDept, setFilterDept] = usePersistedState("chms-members-dept", "");
+  const [filterSubDist, setFilterSubDist] = usePersistedState("chms-members-subdist", "");
+  const [filterGroup, setFilterGroup] = usePersistedState("chms-members-group", "");
+  const [filterRole, setFilterRole] = usePersistedState("chms-members-role", "");
+  const [filterStage, setFilterStage] = usePersistedState("chms-members-stage", "");
+  const [filterBaptism, setFilterBaptism] = usePersistedState("chms-members-baptism", "");
+  const [filterStatus, setFilterStatus] = usePersistedState("chms-members-status", "");
+  const [includeFamily, setIncludeFamily] = usePersistedState("chms-members-family", false);
+  const [sortBy, setSortBy] = usePersistedState<"name" | "registered_date" | "last_contact" | "family">("chms-members-sort", "name");
+  const [editMode, setEditMode] = usePersistedState("chms-members-edit", false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [edits, setEdits] = useState<Record<string, EditRow>>({});
   const [saving, setSaving] = useState(false);

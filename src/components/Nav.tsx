@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
+import { clearPersistedState } from "@/lib/use-persisted-state";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "대시보드", roles: ["admin"] },
@@ -50,7 +51,7 @@ export default function Nav() {
               </Link>
             ))}
             <button
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => { clearPersistedState(); signOut({ callbackUrl: "/" }); }}
               className="ml-4 px-3 py-2 rounded text-sm hover:bg-white/10"
             >
               로그아웃
@@ -90,7 +91,7 @@ export default function Nav() {
               </Link>
             ))}
             <button
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => { clearPersistedState(); signOut({ callbackUrl: "/" }); }}
               className="block w-full text-left px-3 py-2 rounded text-sm hover:bg-white/10"
             >
               로그아웃
